@@ -436,7 +436,7 @@ struct RootPaletteView: View {
 
     /// Split from `body` for the same reason `keyHandlers` is: one chain cannot carry them all.
     private func stateObservers(_ content: some View) -> some View {
-        menuObservers(baseStateObservers(content))
+        menuObservers(tokenObservers(modeObservers(queryObservers(baseStateObservers(content)))))
     }
 
     private func baseStateObservers(_ content: some View) -> some View {
@@ -461,6 +461,10 @@ struct RootPaletteView: View {
                     closeMenus()
                 }
             })
+    }
+
+    private func queryObservers(_ content: some View) -> some View {
+        content
             .onChange(of: vm.query) {
                 resetCompactSelection()
                 if vm.collapseQueryLineBreaks() {
@@ -500,6 +504,10 @@ struct RootPaletteView: View {
                 land()
                 fileSearch.search(vm.query, filter: vm.fileSearchFilter)
             }
+    }
+
+    private func modeObservers(_ content: some View) -> some View {
+        content
             .onChange(of: vm.mode) {
                 vm.clipboardFilter = .all
                 vm.fileSearchFilter = .all
@@ -543,6 +551,10 @@ struct RootPaletteView: View {
                     Task { await extensions.stop() }
                 }
             }
+    }
+
+    private func tokenObservers(_ content: some View) -> some View {
+        content
             // `prepare` may change nothing else, so this still lands the list as freshly opened.
             .onChange(of: vm.resetToken) {
                 if menuOpen {
