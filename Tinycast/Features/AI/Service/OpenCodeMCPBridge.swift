@@ -28,9 +28,11 @@ final class OpenCodeMCPBridge {
     isolated deinit { task?.cancel() }
 
     func start() async throws -> String {
+        guard #available(macOS 26.0, *) else { throw URLError(.unsupportedURL) }
         let listener = try NetworkListener(
             using: .parameters { TCP() }
-                .localEndpoint(.hostPort(host: .ipv4(.loopback), port: .any)))
+                .localEndpoint(.hostPort(host: .ipv4(.loopback), port: .any))
+        )
         listener.newConnectionLimit = 16
         let port = try await withTaskCancellationHandler {
             try Task.checkCancellation()
@@ -64,14 +66,17 @@ final class OpenCodeMCPBridge {
         guard !stopped else { throw CancellationError() }
         return try OpenCodeMCPLaunch.configuration(
             server: server, url: "http://127.0.0.1:\(port)/mcp", bearer: bearer,
-            tools: session.tools)
+            tools: session.tools
+        )
     }
 
     func stop() {
         stopped = true
         ready?.resume(throwing: CancellationError())
         ready = nil
-        for waiter in waiting { waiter.resume(throwing: CancellationError()) }
+        for waiter in waiting {
+            waiter.resume(throwing: CancellationError())
+        }
         waiting = []
         task?.cancel()
         task = nil
@@ -85,6 +90,7 @@ final class OpenCodeMCPBridge {
         failure(error.localizedDescription)
     }
 
+    @available(macOS 26.0, *)
     private func receive(_ connection: NetworkConnection<TCP>) async {
         do {
             let body = try await withThrowingTaskGroup(of: Data.self) { group in
@@ -115,6 +121,7 @@ final class OpenCodeMCPBridge {
         let status: String
     }
 
+    @available(macOS 26.0, *)
     private func read(_ connection: NetworkConnection<TCP>) async throws -> Data {
         var bytes = Data()
         var bodyStart: Int?
@@ -125,7 +132,7 @@ final class OpenCodeMCPBridge {
             if bodyStart == nil {
                 if let separator = bytes.range(of: Data("\r\n\r\n".utf8)) {
                     guard separator.lowerBound <= 8192,
-                        let header = String(data: bytes[..<separator.lowerBound], encoding: .utf8)
+                          let header = String(data: bytes[..<separator.lowerBound], encoding: .utf8)
                     else { throw HTTPFailure(status: "400 Bad Request") }
                     let lines = header.components(separatedBy: "\r\n")
                     guard lines.first == "POST /mcp HTTP/1.1" else {
@@ -144,11 +151,11 @@ final class OpenCodeMCPBridge {
                             .trimmingCharacters(in: .whitespaces)
                     }
                     guard headers["authorization"] == "Bearer " + bearer,
-                        headers["origin"] == nil
+                          headers["origin"] == nil
                     else { throw HTTPFailure(status: "403 Forbidden") }
                     guard headers["transfer-encoding"] == nil,
-                        let value = headers["content-length"], let count = Int(value),
-                        count > 0, count <= 1_048_576
+                          let value = headers["content-length"], let count = Int(value),
+                          count > 0, count <= 1_048_576
                     else { throw HTTPFailure(status: "413 Content Too Large") }
                     bodyStart = separator.upperBound
                     length = count
@@ -157,16 +164,18 @@ final class OpenCodeMCPBridge {
                 }
             }
             if let bodyStart, bytes.count >= bodyStart + length {
-                return Data(bytes[bodyStart..<(bodyStart + length)])
+                return Data(bytes[bodyStart ..< (bodyStart + length)])
             }
-            if message.metadata.endOfStream { throw HTTPFailure(status: "400 Bad Request") }
+            if message.metadata.endOfStream {
+                throw HTTPFailure(status: "400 Bad Request")
+            }
         }
     }
 
     private func respond(_ body: Data) async throws -> Data? {
         guard let request = JSONValue(data: body)?.objectValue,
-            request["jsonrpc"]?.stringValue == "2.0",
-            let method = request["method"]?.stringValue
+              request["jsonrpc"]?.stringValue == "2.0",
+              let method = request["method"]?.stringValue
         else { throw HTTPFailure(status: "400 Bad Request") }
         guard let id = request["id"] else { return nil }
         let params = request["params"]?.objectValue ?? [:]
@@ -176,10 +185,10 @@ final class OpenCodeMCPBridge {
             let requested = params["protocolVersion"]?.stringValue ?? ""
             let version =
                 ["2024-11-05", "2025-03-26", "2025-06-18"].contains(requested)
-                ? requested : "2025-06-18"
+                    ? requested : "2025-06-18"
             result = .object([
                 "protocolVersion": .string(version), "capabilities": .object(["tools": .object([:])]),
-                "serverInfo": .object(["name": .string("Tinycast"), "version": .string("1")])
+                "serverInfo": .object(["name": .string("Tinycast"), "version": .string("1")]),
             ])
         case "ping":
             result = .object([:])
@@ -190,30 +199,31 @@ final class OpenCodeMCPBridge {
                         .object([
                             "name": .string(OpenCodeMCPLaunch.toolName(at: index)),
                             "description": .string(tool.origin + ": " + tool.title + "\n" + tool.description),
-                            "inputSchema": tool.parameters
+                            "inputSchema": tool.parameters,
                         ])
-                    })
+                    }
+                ),
             ])
         case "tools/call":
             result = try await call(params)
         default:
             return try JSONSerialization.data(withJSONObject: [
                 "jsonrpc": "2.0", "id": id.jsonObject,
-                "error": ["code": -32601, "message": "Method not found"]
+                "error": ["code": -32601, "message": "Method not found"],
             ])
         }
         return try JSONSerialization.data(withJSONObject: [
-            "jsonrpc": "2.0", "id": id.jsonObject, "result": result.jsonObject
+            "jsonrpc": "2.0", "id": id.jsonObject, "result": result.jsonObject,
         ])
     }
 
     private func call(_ params: [String: JSONValue]) async throws -> JSONValue {
         guard !stopped else { throw CancellationError() }
         guard let name = params["name"]?.stringValue,
-            let index = session.tools.indices.first(where: {
-                OpenCodeMCPLaunch.toolName(at: $0) == name
-            }),
-            params["arguments"] == nil || params["arguments"]?.objectValue != nil
+              let index = session.tools.indices.first(where: {
+                  OpenCodeMCPLaunch.toolName(at: $0) == name
+              }),
+              params["arguments"] == nil || params["arguments"]?.objectValue != nil
         else { return toolResult("Unknown tool or invalid arguments.", isError: true) }
         let tool = session.tools[index]
         if invoking {
@@ -222,7 +232,11 @@ final class OpenCodeMCPBridge {
             invoking = true
         }
         defer {
-            if waiting.isEmpty { invoking = false } else { waiting.removeFirst().resume() }
+            if waiting.isEmpty {
+                invoking = false
+            } else {
+                waiting.removeFirst().resume()
+            }
         }
         try Task.checkCancellation()
         guard !stopped else { throw CancellationError() }
@@ -256,10 +270,11 @@ final class OpenCodeMCPBridge {
     private func toolResult(_ text: String, isError: Bool) -> JSONValue {
         .object([
             "content": .array([.object(["type": .string("text"), "text": .string(text)])]),
-            "isError": .bool(isError)
+            "isError": .bool(isError),
         ])
     }
 
+    @available(macOS 26.0, *)
     private func send(
         _ connection: NetworkConnection<TCP>, status: String, body: Data?
     ) async throws {
@@ -267,7 +282,8 @@ final class OpenCodeMCPBridge {
         var response = Data(
             ("HTTP/1.1 \(status)\r\nContent-Type: application/json\r\n"
                 + "Cache-Control: no-store\r\nConnection: close\r\n"
-                + "Content-Length: \(body.count)\r\n\r\n").utf8)
+                + "Content-Length: \(body.count)\r\n\r\n").utf8
+        )
         response.append(body)
         try await connection.send(response, endOfStream: true)
     }
