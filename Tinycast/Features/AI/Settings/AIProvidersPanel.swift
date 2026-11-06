@@ -9,8 +9,8 @@ enum AIProviderRoute: Hashable {
     var source: AIModelSource {
         switch self {
         case .appleIntelligence: return .appleIntelligence
-        case .installed(let kind): return kind.source
-        case .api(let id): return .api(id)
+        case let .installed(kind): return kind.source
+        case let .api(id): return .api(id)
         }
     }
 }
@@ -21,7 +21,9 @@ enum AIProviderTab: String, CaseIterable, Identifiable {
     case models
     case advanced
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var title: String {
         switch self {
@@ -98,7 +100,8 @@ struct AIProvidersPanel: View {
             AIConnectionEditorPanel(
                 target: target,
                 onSave: saveConnection,
-                onCancel: { editor = nil })
+                onCancel: { editor = nil }
+            )
         }
         .confirmationDialog(
             pendingRemoval.map { String(localized: "Remove “\($0.title)”?") }
@@ -107,7 +110,9 @@ struct AIProvidersPanel: View {
             titleVisibility: .visible
         ) {
             Button("Remove Connection", role: .destructive) {
-                if let pendingRemoval { removeConnection(pendingRemoval) }
+                if let pendingRemoval {
+                    removeConnection(pendingRemoval)
+                }
             }
             Button("Cancel", role: .cancel) { pendingRemoval = nil }
         } message: {
@@ -120,7 +125,9 @@ struct AIProvidersPanel: View {
         }
         .onChange(of: selection) { modelQuery = "" }
         .onChange(of: settings.connections.map(\.id)) { _, ids in
-            if case .api(let id) = selection, !ids.contains(id) { selection = .installed(.codex) }
+            if case let .api(id) = selection, !ids.contains(id) {
+                selection = .installed(.codex)
+            }
         }
     }
 
@@ -174,7 +181,8 @@ struct AIProvidersPanel: View {
                     Button(provider.title) {
                         editor = AIConnectionEditorTarget(
                             connection: AIConnection(provider: provider),
-                            hasStoredKey: false, headers: [:], isNew: true)
+                            hasStoredKey: false, headers: [:], isNew: true
+                        )
                     }
                 }
             } label: {
@@ -208,9 +216,9 @@ struct AIProvidersPanel: View {
         switch selection {
         case .appleIntelligence?:
             detailForm(.appleIntelligence) { _ in appleIntelligenceSections }
-        case .installed(let kind)?:
+        case let .installed(kind)?:
             detailForm(.installed(kind)) { installedSections(kind, tab: $0) }
-        case .api(let id)?:
+        case let .api(id)?:
             if let connection = settings.connection(id: id) {
                 detailForm(.api(id)) { connectionSections(connection, tab: $0) }
             }
@@ -258,16 +266,16 @@ struct AIProvidersPanel: View {
             }
             Spacer(minLength: Theme.Spacing.lg)
             switch route {
-            case .installed(let kind):
+            case let .installed(kind):
                 if let version = installedAI.status(for: kind).version,
-                    settings.enabledInstalledProviders.contains(kind)
+                   settings.enabledInstalledProviders.contains(kind)
                 {
                     Text("v" + version)
                         .font(.callout.monospaced())
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
-            case .api(let id):
+            case let .api(id):
                 if let connection = settings.connection(id: id) {
                     Button("Edit…") { edit(connection) }
                 }
@@ -278,18 +286,25 @@ struct AIProvidersPanel: View {
         }
     }
 
+    private var appleIntelligenceStatus: AppleIntelligenceStatus {
+        guard #available(macOS 26.0, *) else { return .requiresMacOS26 }
+        return AppleIntelligenceProvider.status()
+    }
+
     // MARK: On this Mac
 
     @ViewBuilder
     private var appleIntelligenceSections: some View {
         let available = settings.isAppleIntelligenceAvailable()
-        if !settings.isRouteEnabled(.appleIntelligence) { turnedOffSection() }
+        if !settings.isRouteEnabled(.appleIntelligence) {
+            turnedOffSection()
+        }
         Section {
             LabeledContent {
                 if available {
                     Text("Ready")
                         .foregroundStyle(.secondary)
-                } else if AppleIntelligenceProvider.status().isSupported {
+                } else if appleIntelligenceStatus.isSupported {
                     Button("Open System Settings…") {
                         NSWorkspace.shared.open(AppleIntelligence.settingsURL)
                     }
@@ -299,8 +314,9 @@ struct AIProvidersPanel: View {
                 Text(
                     available
                         ? String(localized: "Runs on this Mac. Nothing leaves it.")
-                        : AppleIntelligenceProvider.status().message
-                            ?? String(localized: "Not available on this Mac."))
+                        : appleIntelligenceStatus.message
+                        ?? String(localized: "Not available on this Mac.")
+                )
             }
         } header: {
             Text("Status")
@@ -386,7 +402,8 @@ struct AIProvidersPanel: View {
                         RedactedText(
                             value: email,
                             revealHelp: String(localized: "Click to reveal the signed-in account"),
-                            hideHelp: String(localized: "Click to hide the signed-in account"))
+                            hideHelp: String(localized: "Click to hide the signed-in account")
+                        )
                     }
                 }
             }
@@ -398,8 +415,10 @@ struct AIProvidersPanel: View {
                     usageRow(secondary, fallbackTitle: String(localized: "Secondary window"))
                 }
             }
-            if let executable = subscription.executable { commandRow(executable) }
-        case .unavailable(let message):
+            if let executable = subscription.executable {
+                commandRow(executable)
+            }
+        case let .unavailable(message):
             LabeledContent {
                 HStack(spacing: Theme.Spacing.sm) {
                     Button("Install Codex CLI…") { NSWorkspace.shared.open(InstalledAIKind.codex.installURL) }
@@ -410,7 +429,7 @@ struct AIProvidersPanel: View {
                 Text("Not installed")
                 Text(message)
             }
-        case .failed(let message):
+        case let .failed(message):
             failedRow(message, retry: { subscription.refresh() })
         }
     }
@@ -428,7 +447,9 @@ struct AIProvidersPanel: View {
                 Text("Ready")
                 Text("\(status.models.count) models available")
             }
-            if let account = status.account { accountRow(account, kind: kind) }
+            if let account = status.account {
+                accountRow(account, kind: kind)
+            }
         case .signInRequired:
             signInRow(kind, check: { installedAI.refresh(kind: kind) })
         case .notInstalled:
@@ -442,10 +463,12 @@ struct AIProvidersPanel: View {
                 Text("Not installed")
                 Text("Tinycast could not find the \(kind.command) command.")
             }
-        case .failed(let message):
+        case let .failed(message):
             failedRow(message, retry: { installedAI.refresh(kind: kind) })
         }
-        if let executable = status.executable { commandRow(executable) }
+        if let executable = status.executable {
+            commandRow(executable)
+        }
     }
 
     private func commandRow(_ executable: URL) -> some View {
@@ -470,7 +493,8 @@ struct AIProvidersPanel: View {
                 RedactedText(
                     value: email,
                     revealHelp: String(localized: "Click to reveal the signed-in account"),
-                    hideHelp: String(localized: "Click to hide the signed-in account"))
+                    hideHelp: String(localized: "Click to hide the signed-in account")
+                )
             }
         }
     }
@@ -531,8 +555,9 @@ struct AIProvidersPanel: View {
         kind.isolationCaveat(hasManagedMCPPolicy: InstalledAIManager.hasManagedMCPPolicy)
             ?? String(
                 localized: """
-                    Uses the \(kind.command) command signed in on this Mac. Its keys are never stored.
-                    """)
+                Uses the \(kind.command) command signed in on this Mac. Its keys are never stored.
+                """
+            )
     }
 
     private func installedModels(_ kind: InstalledAIKind) -> [ProviderModel] {
@@ -551,11 +576,14 @@ struct AIProvidersPanel: View {
     private func connectionSections(
         _ connection: AIConnection, tab: AIProviderTab
     ) -> some View {
-        if !settings.isRouteEnabled(.api(connection.id)) { turnedOffSection() }
+        if !settings.isRouteEnabled(.api(connection.id)) {
+            turnedOffSection()
+        }
         if tab == .models {
             modelsSection(
                 route: .api(connection.id),
-                models: connection.models.map { ProviderModel(id: $0, name: $0) })
+                models: connection.models.map { ProviderModel(id: $0, name: $0) }
+            )
         } else {
             connectionSection(connection)
         }
@@ -575,7 +603,8 @@ struct AIProvidersPanel: View {
             LabeledContent("API key") {
                 Text(keyStatus(connection))
                     .foregroundStyle(
-                        keyIsMissing(connection) ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                        keyIsMissing(connection) ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary)
+                    )
             }
             if connectionsWithHeaders.contains(connection.id) {
                 LabeledContent("Request headers") {
@@ -633,12 +662,15 @@ struct AIProvidersPanel: View {
                             AIModelChecklist.Item(
                                 id: model.id, title: model.name,
                                 isOn: shownSet?.contains(model.id) ?? true,
-                                isLocked: isDefault(model.id, route: route))
+                                isLocked: isDefault(model.id, route: route)
+                            )
                         },
                         onToggle: { id, isOn in
                             settings.setModel(
-                                id, shown: isOn, in: source, available: models.map(\.id))
-                        })
+                                id, shown: isOn, in: source, available: models.map(\.id)
+                            )
+                        }
+                    )
                 }
             } footer: {
                 Text(
@@ -675,8 +707,8 @@ struct AIProvidersPanel: View {
     private func title(for route: AIProviderRoute) -> String {
         switch route {
         case .appleIntelligence: return AppleIntelligence.title
-        case .installed(let kind): return kind.title
-        case .api(let id):
+        case let .installed(kind): return kind.title
+        case let .api(id):
             return settings.connection(id: id)?.title ?? String(localized: "API Connection")
         }
     }
@@ -684,8 +716,8 @@ struct AIProvidersPanel: View {
     private func kindCaption(for route: AIProviderRoute) -> String {
         switch route {
         case .appleIntelligence: return String(localized: "On this Mac · No account needed")
-        case .installed(let kind): return String(localized: "Installed command · \(kind.command)")
-        case .api(let id):
+        case let .installed(kind): return String(localized: "Installed command · \(kind.command)")
+        case let .api(id):
             let provider = settings.connection(id: id)?.provider.title ?? ""
             return String(localized: "API connection · \(provider)")
         }
@@ -698,15 +730,17 @@ struct AIProvidersPanel: View {
             guard settings.isRouteEnabled(.appleIntelligence) else { return String(localized: "Off") }
             return settings.isAppleIntelligenceAvailable()
                 ? String(localized: "Ready · Runs on this Mac") : String(localized: "Unavailable")
-        case .installed(let kind):
+        case let .installed(kind):
             guard settings.enabledInstalledProviders.contains(kind) else {
                 return String(localized: "Off")
             }
             return kind == .codex ? codexCaption : installedCaption(kind)
-        case .api(let id):
+        case let .api(id):
             guard let connection = settings.connection(id: id) else { return "" }
             guard settings.isRouteEnabled(.api(id)) else { return String(localized: "Off") }
-            if keyIsMissing(connection) { return String(localized: "Key missing") }
+            if keyIsMissing(connection) {
+                return String(localized: "Key missing")
+            }
             let count = modelCount(connection.models.count)
             return connection.name.isEmpty ? count : "\(connection.provider.title) · \(count)"
         }
@@ -745,12 +779,15 @@ struct AIProvidersPanel: View {
         case .installed(.grok): return .asset(AIBrand.grok.assetName)
         case .installed(.openCode): return .asset(AIBrand.openCode.assetName)
         case .installed(.cursor): return AIModelOption.cursorIcon
-        case .api(let id):
+        case let .api(id):
             guard let connection = settings.connection(id: id) else { return .symbol("sparkles") }
             // OpenRouter is its own brand; resolving by model would show whichever vendor came first.
-            if connection.provider == .openRouter { return .asset(AIBrand.openRouter.assetName) }
+            if connection.provider == .openRouter {
+                return .asset(AIBrand.openRouter.assetName)
+            }
             return AIModelOption.icon(
-                AIBrand.resolve(provider: connection.provider, model: connection.models.first ?? ""))
+                AIBrand.resolve(provider: connection.provider, model: connection.models.first ?? "")
+            )
         }
     }
 
@@ -764,7 +801,7 @@ struct AIProvidersPanel: View {
     private var initialSelection: AIProviderRoute {
         switch settings.defaultModel?.source {
         case .appleIntelligence?: return .appleIntelligence
-        case .api(let id)?: return .api(id)
+        case let .api(id)?: return .api(id)
         case let source?:
             return source.installedKind.map(AIProviderRoute.installed) ?? .installed(.codex)
         case nil: return .installed(.codex)
@@ -772,19 +809,20 @@ struct AIProvidersPanel: View {
     }
 
     private var selectedConnection: AIConnection? {
-        guard case .api(let id) = selection else { return nil }
+        guard case let .api(id) = selection else { return nil }
         return settings.connection(id: id)
     }
 
     private func routeToggle(_ route: AIProviderRoute) -> some View {
         // Off for display only: the stored choice belongs to the reader, not to this Mac.
         let unsupported =
-            route == .appleIntelligence && !AppleIntelligenceProvider.status().isSupported
+            route == .appleIntelligence && !appleIntelligenceStatus.isSupported
         return Toggle(
             "Enable \(title(for: route))",
             isOn: Binding(
                 get: { !unsupported && settings.isRouteEnabled(route.source) },
-                set: { settings.setRoute(route.source, enabled: $0) })
+                set: { settings.setRoute(route.source, enabled: $0) }
+            )
         )
         .labelsHidden()
         .toggleStyle(.switch)
@@ -794,7 +832,12 @@ struct AIProvidersPanel: View {
     private var removalPresented: Binding<Bool> {
         Binding(
             get: { pendingRemoval != nil },
-            set: { if !$0 { pendingRemoval = nil } })
+            set: {
+                if !$0 {
+                    pendingRemoval = nil
+                }
+            }
+        )
     }
 
     private func keyIsMissing(_ connection: AIConnection) -> Bool {
@@ -803,7 +846,9 @@ struct AIProvidersPanel: View {
     }
 
     private func keyStatus(_ connection: AIConnection) -> String {
-        if keyStatuses[connection.id] == true { return String(localized: "Stored in Keychain") }
+        if keyStatuses[connection.id] == true {
+            return String(localized: "Stored in Keychain")
+        }
         if AIEndpointPolicy.isLoopback(connection.baseURL) {
             return String(localized: "None needed locally")
         }
@@ -813,11 +858,12 @@ struct AIProvidersPanel: View {
 
     private func edit(_ connection: AIConnection) {
         do {
-            editor = AIConnectionEditorTarget(
+            editor = try AIConnectionEditorTarget(
                 connection: connection,
                 hasStoredKey: keyStatuses[connection.id] == true,
-                headers: try headerStore.values(for: connection.id),
-                isNew: false)
+                headers: headerStore.values(for: connection.id),
+                isNew: false
+            )
         } catch {
             // An editor opened without the saved headers would erase them on Save.
             keyError = true
@@ -829,13 +875,14 @@ struct AIProvidersPanel: View {
     ) -> String? {
         let outcome = AIConnectionKeyPolicy.resolve(
             enteredKey: key, connection: connection, saved: settings.connection(id: connection.id),
-            hasStoredKey: keyStatuses[connection.id] == true, hasHeaders: !headers.isEmpty)
+            hasStoredKey: keyStatuses[connection.id] == true, hasHeaders: !headers.isEmpty
+        )
         do {
             switch outcome {
-            case .store(let key): try keyStore.setSecret(key, for: connection.id)
+            case let .store(key): try keyStore.setSecret(key, for: connection.id)
             case .removeStored: try keyStore.removeSecret(for: connection.id)
             case .keep: break
-            case .reject(let message): return message
+            case let .reject(message): return message
             }
             try headerStore.setValues(headers, for: connection.id)
             settings.save(connection)
@@ -873,8 +920,12 @@ struct AIProvidersPanel: View {
         _ window: ChatGPTSubscription.UsageWindow, fallback: String
     ) -> String {
         guard let minutes = window.durationMinutes else { return fallback }
-        if minutes >= 1_440 { return String(localized: "\(minutes / 1_440)-day window") }
-        if minutes >= 60 { return String(localized: "\(minutes / 60)-hour window") }
+        if minutes >= 1440 {
+            return String(localized: "\(minutes / 1440)-day window")
+        }
+        if minutes >= 60 {
+            return String(localized: "\(minutes / 60)-hour window")
+        }
         return String(localized: "\(minutes)-minute window")
     }
 
@@ -884,7 +935,9 @@ struct AIProvidersPanel: View {
         do {
             for connection in settings.connections {
                 statuses[connection.id] = try keyStore.hasSecret(for: connection.id)
-                if try headerStore.hasSecret(for: connection.id) { withHeaders.insert(connection.id) }
+                if try headerStore.hasSecret(for: connection.id) {
+                    withHeaders.insert(connection.id)
+                }
             }
             keyError = false
         } catch {
@@ -916,7 +969,8 @@ private struct AIProviderTile: View {
             .background(
                 Theme.Colors.controlSurface,
                 in: RoundedRectangle(
-                    cornerRadius: Theme.Radius.thumbnail * scale, style: .continuous)
+                    cornerRadius: Theme.Radius.thumbnail * scale, style: .continuous
+                )
             )
             .accessibilityHidden(true)
     }
@@ -924,9 +978,9 @@ private struct AIProviderTile: View {
     @ViewBuilder
     private var glyph: some View {
         switch icon {
-        case .asset(let name):
+        case let .asset(name):
             Image(name).resizable().renderingMode(.template).scaledToFit()
-        case .symbol(let name):
+        case let .symbol(name):
             Image(systemName: name).resizable().scaledToFit()
         case .file, .thumbnail, .blank:
             Image(systemName: "sparkles").resizable().scaledToFit()
@@ -941,14 +995,16 @@ extension AISettingsStore {
         reconcile(
             codexModels: enabled.contains(.codex) ? subscription.models : [],
             isUnavailable: !enabled.contains(.codex) || subscription.phase == .signedOut
-                || subscription.phase.isUnavailable)
+                || subscription.phase.isUnavailable
+        )
         for kind in InstalledAIKind.managedCLIKinds {
             let status = installedAI.status(for: kind)
             reconcile(
                 installed: kind,
                 models: enabled.contains(kind) ? status.models : [],
                 isUnavailable: !enabled.contains(kind) || status.phase == .signInRequired
-                    || status.phase == .notInstalled)
+                    || status.phase == .notInstalled
+            )
         }
     }
 }
