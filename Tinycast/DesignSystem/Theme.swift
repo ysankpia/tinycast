@@ -617,6 +617,7 @@ extension View {
     }
 }
 
+@MainActor
 @ViewBuilder
 func compatGlassContainer<Content: View>(
     spacing: CGFloat, @ViewBuilder content: () -> Content
