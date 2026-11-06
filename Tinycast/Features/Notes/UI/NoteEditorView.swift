@@ -34,7 +34,7 @@ struct NoteEditorView: NSViewRepresentable {
         return scrollView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+    func updateNSView(_: NSScrollView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.update(input)
         context.coordinator.setRendersMarkdown(rendersMarkdown)
@@ -46,6 +46,7 @@ struct NoteEditorView: NSViewRepresentable {
         weak var textView: NoteTextView? {
             didSet { attach() }
         }
+
         let editorUndoManager = UndoManager()
         let renderer: NoteMarkdownRenderer
         /// Replaced by the harness, which records a link instead of opening a browser.
@@ -53,7 +54,7 @@ struct NoteEditorView: NSViewRepresentable {
 
         private var input: NoteEditorInput
         private var isInstalling = false
-        private var undoObservers: [NSObjectProtocol] = []
+        private nonisolated(unsafe) var undoObservers: [NSObjectProtocol] = []
         /// Held here because the layout manager keeps its delegate weakly.
         private let fragmentProvider = NoteLayoutFragmentProvider()
 
@@ -73,12 +74,14 @@ struct NoteEditorView: NSViewRepresentable {
                 center.addObserver(forName: redo, object: editorUndoManager, queue: .main) {
                     [weak self] _ in
                     MainActor.assumeIsolated { self?.sourceDidChange() }
-                }
+                },
             ]
         }
 
         deinit {
-            for observer in undoObservers { NotificationCenter.default.removeObserver(observer) }
+            for observer in undoObservers {
+                NotificationCenter.default.removeObserver(observer)
+            }
         }
 
         private func attach() {
@@ -93,14 +96,19 @@ struct NoteEditorView: NSViewRepresentable {
             self.input = input
             let selectionLocation = min(
                 textView.selectedRange().location,
-                (input.source as NSString).length)
+                (input.source as NSString).length
+            )
             isInstalling = true
             textView.string = input.source
-            if wasEmpty != input.source.isEmpty { textView.needsDisplay = true }
+            if wasEmpty != input.source.isEmpty {
+                textView.needsDisplay = true
+            }
             textView.setSelectedRange(NSRange(location: selectionLocation, length: 0))
             renderer.reset()
             isInstalling = false
-            if resetUndo { editorUndoManager.removeAllActions() }
+            if resetUndo {
+                editorUndoManager.removeAllActions()
+            }
             reportCharacterCount()
             reportFormatting()
         }
@@ -109,7 +117,7 @@ struct NoteEditorView: NSViewRepresentable {
             guard next != input else { return }
             let authoritative =
                 next.id != input.id || next.epoch != input.epoch
-                || next.source != textView?.string
+                    || next.source != textView?.string
             input = next
             guard authoritative else { return }
             install(next, resetUndo: true)
@@ -122,7 +130,7 @@ struct NoteEditorView: NSViewRepresentable {
             reportFormatting()
         }
 
-        func textDidChange(_ notification: Notification) {
+        func textDidChange(_: Notification) {
             sourceDidChange()
         }
 
@@ -132,20 +140,22 @@ struct NoteEditorView: NSViewRepresentable {
             reportFormatting()
             let source = textView.string
             guard source != input.source else { return }
-            if input.source.isEmpty != source.isEmpty { textView.needsDisplay = true }
+            if input.source.isEmpty != source.isEmpty {
+                textView.needsDisplay = true
+            }
             input = NoteEditorInput(id: input.id, source: source, epoch: input.epoch)
             parent.onSourceChange(source)
             reportCharacterCount()
         }
 
-        func textViewDidChangeSelection(_ notification: Notification) {
+        func textViewDidChangeSelection(_: Notification) {
             guard !isInstalling else { return }
             renderer.selectionDidChange()
             reportFormatting()
         }
 
         func textView(
-            _ textView: NSTextView, shouldChangeTypingAttributes oldTypingAttributes: [String: Any],
+            _: NSTextView, shouldChangeTypingAttributes _: [String: Any],
             toAttributes newTypingAttributes: [NSAttributedString.Key: Any]
         ) -> [NSAttributedString.Key: Any] {
             renderer.isEnabled ? NoteMarkdownStyler.literal : newTypingAttributes
@@ -154,13 +164,14 @@ struct NoteEditorView: NSViewRepresentable {
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
             let url = link as? URL ?? (link as? String).flatMap { URL(string: $0) }
             guard let url, let scheme = url.scheme?.lowercased(),
-                NoteMarkdownStyler.openableSchemes.contains(scheme)
+                  NoteMarkdownStyler.openableSchemes.contains(scheme)
             else {
                 return true
             }
             if let noteView = textView as? NoteTextView, let event = NSApp.currentEvent,
-                let edge = noteView.linkEdge(
-                    ofLinkAt: charIndex, clickedAt: noteView.containerPoint(for: event))
+               let edge = noteView.linkEdge(
+                   ofLinkAt: charIndex, clickedAt: noteView.containerPoint(for: event)
+               )
             {
                 textView.setSelectedRange(NSRange(location: edge, length: 0))
                 return true
@@ -169,9 +180,13 @@ struct NoteEditorView: NSViewRepresentable {
             return true
         }
 
-        var rendersMarkdown: Bool { renderer.isEnabled }
+        var rendersMarkdown: Bool {
+            renderer.isEnabled
+        }
 
-        var markdown: NoteMarkdown { renderer.syncedMarkdown() }
+        var markdown: NoteMarkdown {
+            renderer.syncedMarkdown()
+        }
 
         func focusChanged() {
             renderer.selectionDidChange()
@@ -195,9 +210,10 @@ struct NoteEditorView: NSViewRepresentable {
             guard let textView else { return }
             let formatting =
                 renderer.isEnabled
-                ? NoteMarkdownEditing.formatting(
-                    source: textView.string, selection: textView.selectedRange(), markdown: markdown)
-                : .plain
+                    ? NoteMarkdownEditing.formatting(
+                        source: textView.string, selection: textView.selectedRange(), markdown: markdown
+                    )
+                    : .plain
             parent.onFormattingChange(input, formatting)
         }
     }
@@ -212,10 +228,12 @@ struct NoteEditorView: NSViewRepresentable {
         textView.minSize = .zero
         textView.maxSize = NSSize(
             width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude)
+            height: CGFloat.greatestFiniteMagnitude
+        )
         textView.textContainerInset = NSSize(
             width: Theme.Size.noteEditorInset,
-            height: Theme.Size.noteEditorTopInset)
+            height: Theme.Size.noteEditorTopInset
+        )
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.lineFragmentPadding = 0
         textView.font = NoteMarkdownTypography.body
@@ -223,7 +241,7 @@ struct NoteEditorView: NSViewRepresentable {
         textView.insertionPointColor = NSColor(Theme.Colors.noteText)
         textView.selectedTextAttributes = [
             .backgroundColor: NSColor(Theme.Colors.selection),
-            .foregroundColor: NSColor(Theme.Colors.noteText)
+            .foregroundColor: NSColor(Theme.Colors.noteText),
         ]
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
