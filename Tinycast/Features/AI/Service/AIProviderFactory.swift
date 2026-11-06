@@ -3,7 +3,35 @@ import Foundation
 
 @MainActor
 enum AIProviderFactory {
+    /// Chat's route on macOS 15, where the guardrails overload is unavailable.
+    static func make(
+        selection: AIModelSelection,
+        settings: AISettingsStore,
+        subscription: ChatGPTSubscriptionManager,
+        installedAI: InstalledAIManager,
+        keyStore: KeychainSecretStore = .aiAPIKeys,
+        toolServers: AIToolServerSession? = nil,
+        toolSession: AIToolSession? = nil
+    ) throws -> any AIProvider {
+        if case .appleIntelligence = selection {
+            guard #available(macOS 26.0, *) else {
+                throw AIProviderError.unavailable(
+                    String(localized: "Apple Intelligence requires macOS 26."))
+            }
+            guard settings.isRouteEnabled(.appleIntelligence) else {
+                throw AIProviderError.unavailable(
+                    String(localized: "Apple Intelligence is disabled in AI Settings."))
+            }
+            return try makeAppleIntelligenceProvider()
+        }
+        return try makeExternal(
+            selection: selection, settings: settings, subscription: subscription,
+            installedAI: installedAI, keyStore: keyStore,
+            toolServers: toolServers, toolSession: toolSession)
+    }
+
     /// `guardrails` reaches only the on-device model, the one route that filters locally.
+    @available(macOS 26.0, *)
     static func make(
         selection: AIModelSelection,
         settings: AISettingsStore,
@@ -14,16 +42,42 @@ enum AIProviderFactory {
         toolServers: AIToolServerSession? = nil,
         toolSession: AIToolSession? = nil
     ) throws -> any AIProvider {
-        switch selection {
-        case .appleIntelligence:
+        if case .appleIntelligence = selection {
             guard settings.isRouteEnabled(.appleIntelligence) else {
                 throw AIProviderError.unavailable(
                     String(localized: "Apple Intelligence is disabled in AI Settings."))
             }
-            if let message = AppleIntelligenceProvider.status().message {
-                throw AIProviderError.unavailable(message)
-            }
-            return AppleIntelligenceProvider(guardrails: guardrails)
+            return try makeAppleIntelligenceProvider(guardrails: guardrails)
+        }
+        return try makeExternal(
+            selection: selection, settings: settings, subscription: subscription,
+            installedAI: installedAI, keyStore: keyStore,
+            toolServers: toolServers, toolSession: toolSession)
+    }
+
+    @available(macOS 26.0, *)
+    private static func makeAppleIntelligenceProvider(
+        guardrails: SystemLanguageModel.Guardrails = .default
+    ) throws -> any AIProvider {
+        if let message = AppleIntelligenceProvider.status().message {
+            throw AIProviderError.unavailable(message)
+        }
+        return AppleIntelligenceProvider(guardrails: guardrails)
+    }
+
+    private static func makeExternal(
+        selection: AIModelSelection,
+        settings: AISettingsStore,
+        subscription: ChatGPTSubscriptionManager,
+        installedAI: InstalledAIManager,
+        keyStore: KeychainSecretStore,
+        toolServers: AIToolServerSession?,
+        toolSession: AIToolSession?
+    ) throws -> any AIProvider {
+        switch selection {
+        case .appleIntelligence:
+            throw AIProviderError.unavailable(
+                String(localized: "Apple Intelligence requires macOS 26."))
         case .codex(let model, let effort):
             guard settings.enabledInstalledProviders.contains(.codex) else {
                 throw AIProviderError.unavailable(String(localized: "Codex is disabled in AI Settings."))

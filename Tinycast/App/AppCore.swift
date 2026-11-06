@@ -72,7 +72,10 @@ final class AppCore {
     let aiChats: AIChatSurfacesState
     let aiSettings = AISettingsStore(
         environmentStore: .keychain,
-        isAppleIntelligenceAvailable: { AppleIntelligenceProvider.status().isAvailable })
+        isAppleIntelligenceAvailable: {
+            guard #available(macOS 26.0, *) else { return false }
+            return AppleIntelligenceProvider.status().isAvailable
+        })
     let mcpSettings = MCPSettingsStore()
     let mcpOAuth = MCPOAuthManager()
     @ObservationIgnored private(set) lazy var mcp = MCPServerManager(oauth: mcpOAuth)
@@ -675,10 +678,15 @@ final class AppCore {
             throw AIProviderError.unavailable(
                 String(localized: "Choose a model in Settings \u{2192} Quick Actions."))
         }
+        if #available(macOS 26.0, *) {
+            return try AIProviderFactory.make(
+                selection: selection, settings: aiSettings, subscription: chatGPTSubscription,
+                installedAI: installedAI,
+                guardrails: .permissiveContentTransformations)
+        }
         return try AIProviderFactory.make(
             selection: selection, settings: aiSettings, subscription: chatGPTSubscription,
-            installedAI: installedAI,
-            guardrails: .permissiveContentTransformations)
+            installedAI: installedAI)
     }
 
     // MARK: - Feature switches

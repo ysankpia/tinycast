@@ -38,6 +38,7 @@ enum TextTranslator {
     static func translate(_ text: String, to target: Locale.Language) async throws -> String {
         guard let source = sourceLanguage(of: text) else { throw Failure.undetectableSource }
         guard !source.isEquivalent(to: target) else { return text }
+        guard #available(macOS 26.0, *) else { throw Failure.unsupported }
         let availability = LanguageAvailability()
         switch await availability.status(from: source, to: target) {
         case .installed:
@@ -66,6 +67,7 @@ enum TextTranslator {
     private static func translate(
         _ text: String, from source: Locale.Language, to target: Locale.Language
     ) async throws -> String {
+        guard #available(macOS 26.0, *) else { throw Failure.unsupported }
         do {
             let session = TranslationSession(installedSource: source, target: target)
             return try await session.translate(text).targetText
@@ -76,6 +78,7 @@ enum TextTranslator {
     }
 
     /// A download is a locale, so the region a bare code resolves to can miss the one installed.
+    @available(macOS 26.0, *)
     private static func installedPair(
         _ sources: [Locale.Language], _ targets: [Locale.Language],
         _ availability: LanguageAvailability
@@ -109,7 +112,8 @@ enum TextTranslator {
 
     /// The framework's own list, so the picker cannot offer a pair that only fails at press time.
     static func supportedLanguages() async -> [Locale.Language] {
-        await LanguageAvailability().supportedLanguages
+        guard #available(macOS 26.0, *) else { return [] }
+        return await LanguageAvailability().supportedLanguages
             .sorted { displayName(of: $0) < displayName(of: $1) }
     }
 }

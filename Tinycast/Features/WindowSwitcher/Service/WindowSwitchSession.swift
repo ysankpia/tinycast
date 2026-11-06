@@ -11,7 +11,7 @@ final class WindowSwitchSession {
     /// Live AX handles, so they are never observed and never outlive the show.
     @ObservationIgnored private var elements: [Int: WindowSwitchSweep.Element] = [:]
     /// Held only while rows are shown, so an app that quits takes its rows with it.
-    @ObservationIgnored private var terminationToken: NotificationCenter.ObservationToken?
+    @ObservationIgnored private var terminationToken: NSObjectProtocol?
 
     func present(_ snapshot: WindowSwitchSweep.Snapshot) {
         self.snapshot = WindowSwitchOrder.sorted(snapshot.entries)
@@ -49,8 +49,15 @@ final class WindowSwitchSession {
     private func observeTerminations() {
         guard terminationToken == nil else { return }
         terminationToken = NSWorkspace.shared.notificationCenter.addObserver(
-            of: NSWorkspace.shared, for: NSWorkspace.DidTerminateApplicationMessage.self
-        ) { [weak self] in self?.removeWindows(of: $0.application.processIdentifier) }
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: NSWorkspace.shared, queue: .main
+        ) { [weak self] notification in
+            guard
+                let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                    as? NSRunningApplication
+            else { return }
+            MainActor.assumeIsolated { self?.removeWindows(of: app.processIdentifier) }
+        }
     }
 
     private func removeWindows(of pid: pid_t) {

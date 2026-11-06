@@ -3,6 +3,18 @@ import Foundation
 
 @main
 @MainActor
+struct AppleIntelligenceTestRunner {
+    static func main() async {
+        guard #available(macOS 26.0, *) else {
+            print("skip  Apple Intelligence requires macOS 26")
+            return
+        }
+        await AppleIntelligenceTests.run()
+    }
+}
+
+@available(macOS 26.0, *)
+@MainActor
 struct AppleIntelligenceTests {
     static var failures = 0
     static var passes = 0
@@ -16,7 +28,7 @@ struct AppleIntelligenceTests {
         }
     }
 
-    static func main() async {
+    static func run() async {
         statusCopyCoversEveryReason()
         deltasFollowCumulativeSnapshots()
         turnsSplitThePromptFromItsHistory()

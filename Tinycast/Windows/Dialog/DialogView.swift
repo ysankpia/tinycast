@@ -59,7 +59,9 @@ struct DialogView: View {
         }
         .padding(metrics.spacing.dialogInset)
         .frame(width: width, alignment: .leading)
-        .glassEffect(.regular, in: shape)
+        .padding(metrics.spacing.dialogInset)
+        .frame(width: width, alignment: .leading)
+        .frostedMenu(in: shape)
     }
 
     @ViewBuilder private var actions: some View {

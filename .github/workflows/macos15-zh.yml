@@ -1,0 +1,58 @@
+name: macOS 15 Chinese Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          XCODE_PATH="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n1)"
+          if [ -z "$XCODE_PATH" ]; then
+            echo "::error::No Xcode 26.x found on this runner. Installed Xcodes:"
+            ls /Applications | grep -i xcode || true
+            exit 1
+          fi
+          echo "Using $XCODE_PATH"
+          echo "DEVELOPER_DIR=$XCODE_PATH/Contents/Developer" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          xcodebuild -project Tinycast.xcodeproj -scheme Tinycast -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            MACOSX_DEPLOYMENT_TARGET=15.0 \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
+            OTHER_CODE_SIGN_FLAGS="--timestamp=none" \
+            PRODUCT_NAME="Tinycast" PRODUCT_BUNDLE_IDENTIFIER="com.tinycast.app" \
+            MARKETING_VERSION="0.12.8-zh15" CURRENT_PROJECT_VERSION="1" \
+            build
+
+      - name: Verify
+        run: |
+          APP="$RUNNER_TEMP/DerivedData/Build/Products/Release/Tinycast.app"
+          test -d "$APP"
+          /usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist"
+          lipo -archs "$APP/Contents/MacOS/Tinycast"
+          lipo -archs "$APP/Contents/Helpers/ClipboardTextHelper"
+          xcrun vtool -show-build-version "$APP/Contents/MacOS/Tinycast" | grep minos
+
+      - name: Package
+        run: |
+          cd "$RUNNER_TEMP/DerivedData/Build/Products/Release"
+          ditto -c -k --sequesterRsrc --keepParent Tinycast.app \
+            "$RUNNER_TEMP/Tinycast-macOS15-zh.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tinycast-macOS15-zh
+          path: ${{ runner.temp }}/Tinycast-macOS15-zh.zip
+          retention-days: 7

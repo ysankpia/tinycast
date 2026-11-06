@@ -104,7 +104,9 @@ struct AISettingsView: View {
     }
 
     private var appleIntelligenceStatus: AppleIntelligenceStatus? {
-        settings.isAppleIntelligenceAvailable() ? nil : AppleIntelligenceProvider.status()
+        guard #available(macOS 26.0, *) else { return .requiresMacOS26 }
+        return settings.isAppleIntelligenceAvailable() ? nil : AppleIntelligenceProvider.status()
+    }
     }
 
     private var providerSummary: String {

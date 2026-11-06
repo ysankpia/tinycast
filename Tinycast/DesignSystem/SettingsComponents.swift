@@ -285,11 +285,10 @@ private struct SettingsEditorPanelSurface: ViewModifier {
         // In front of the glass: a glass fill is hit-testable and would hide a handle behind it.
         let draggable = content.background(WindowDragBackground())
         if controlsOnGlass {
-            draggable
-                .glassEffect(.regular, in: shape)
+            draggable.frostedMenu(in: shape)
         } else {
             draggable.background {
-                shape.fill(.clear).glassEffect(.regular, in: shape)
+                shape.fill(.clear).frostedMenu(in: shape)
             }
         }
     }

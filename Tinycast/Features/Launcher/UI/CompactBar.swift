@@ -50,12 +50,12 @@ struct CompactBar: View {
         let revealed = isRevealed
         let capsule = Capsule(style: .continuous)
         // One container, or the buttons could never bead off the capsule they come out of.
-        GlassEffectContainer(spacing: metrics.scaled(BarMotion.blend)) {
+        compatGlassContainer(spacing: metrics.scaled(BarMotion.blend)) {
             ZStack(alignment: .topLeading) {
                 capsule.fill(.clear)
                     .frame(width: geometry.capsuleWidth(revealed: revealed))
                     .frame(maxHeight: .infinity)
-                    .glassEffect(.regular, in: capsule)
+                    .frostedMenu(in: capsule)
                     .animation(
                         reduceMotion ? nil : BarMotion.capsule.delay(BarMotion.revealDelay),
                         value: revealed)
@@ -90,9 +90,10 @@ struct CompactBar: View {
         .accessibilityLabel(command.name)
         .accessibilityAddTraits(selection == command ? [.isSelected] : [])
         .accessibilityHidden(!revealed)
-        .glassEffect(
-            .regular.tint(selection == command ? Theme.Colors.compactShortcutSelectionTint : nil)
-                .interactive(), in: .circle
+        .compatGlass(
+            in: .circle,
+            tint: selection == command ? Theme.Colors.compactShortcutSelectionTint : nil,
+            interactive: true
         )
         .scaleEffect(revealed ? 1 : BarMotion.parkedScale)
         .position(revealed ? geometry.center(of: index) : geometry.parked)

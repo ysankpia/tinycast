@@ -530,8 +530,76 @@ enum Theme {
     }
 }
 
+private struct FrostedSurface<S: Shape>: ViewModifier {
+    let shape: S
+    let isInteractive: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            if isInteractive {
+                content.glassEffect(.regular.interactive(), in: shape)
+            } else {
+                content.glassEffect(.regular, in: shape)
+            }
+        } else {
+            content.background {
+                shape
+                    .fill(.ultraThinMaterial)
+                    .overlay { shape.fill(Theme.Colors.glassFrost) }
+                    .overlay {
+                        shape.stroke(Theme.Colors.border.opacity(0.6), lineWidth: 0.5)
+                    }
+                    .shadow(color: .black.opacity(0.22), radius: 6, y: 2)
+            }
+        }
+    }
+}
+
 extension View {
     func frosted(in shape: some Shape) -> some View {
-        glassEffect(.regular.interactive(), in: shape)
+        modifier(FrostedSurface(shape: shape, isInteractive: true))
+    }
+
+    func frostedMenu(in shape: some Shape) -> some View {
+        modifier(FrostedSurface(shape: shape, isInteractive: false))
+    }
+
+    @ViewBuilder
+    func compatGlass<S: Shape>(
+        in shape: S, tint: Color? = nil, interactive: Bool = false
+    ) -> some View {
+        if #available(macOS 26.0, *) {
+            if let tint {
+                if interactive {
+                    glassEffect(.regular.tint(tint).interactive(), in: shape)
+                } else {
+                    glassEffect(.regular.tint(tint), in: shape)
+                }
+            } else if interactive {
+                glassEffect(.regular.interactive(), in: shape)
+            } else {
+                glassEffect(.regular, in: shape)
+            }
+        } else {
+            background {
+                shape
+                    .fill(.ultraThinMaterial)
+                    .overlay { if let tint { shape.fill(tint) } }
+                    .overlay { shape.stroke(Theme.Colors.border.opacity(0.6), lineWidth: 0.5) }
+                    .shadow(color: .black.opacity(0.22), radius: 6, y: 2)
+            }
+        }
+    }
+}
+
+@ViewBuilder
+func compatGlassContainer<Content: View>(
+    spacing: CGFloat, @ViewBuilder content: () -> Content
+) -> some View {
+    if #available(macOS 26.0, *) {
+        GlassEffectContainer(spacing: spacing, content: content)
+    } else {
+        content()
     }
 }
