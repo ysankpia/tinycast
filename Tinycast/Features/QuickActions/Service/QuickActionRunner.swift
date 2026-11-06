@@ -4,7 +4,7 @@ import AppKit
 @MainActor
 final class QuickActionRunner {
     /// The ceiling lives here, not at the provider, where it returns as an opaque context error.
-    static let maxSelectionBytes = 32_768
+    static let maxSelectionBytes = 32768
 
     /// A borrowed ⌘C synthesises a keystroke into somebody's app, so it is never the first try.
     static func selection(
@@ -13,11 +13,13 @@ final class QuickActionRunner {
         // A shortcut press is an explicit gesture, so it may prompt, as snippet expansion does.
         guard Permissions.ensureAccessibility() else { throw QuickActionFailure.needsAccessibility }
         guard let targetApp,
-            targetApp.bundleIdentifier != Bundle.main.bundleIdentifier
+              targetApp.bundleIdentifier != Bundle.main.bundleIdentifier
         else { throw QuickActionFailure.noTarget }
 
         let reported = AccessibilityText.read(in: targetApp)
-        if case .text(let text) = reported { return try accepted(text) }
+        if case let .text(text) = reported {
+            return try accepted(text)
+        }
         if let copied = await injector.copySelection(from: targetApp) {
             return try accepted(copied)
         }
@@ -43,16 +45,19 @@ final class QuickActionRunner {
     ) async throws -> String {
         let request = AIRequest(
             instructions: QuickActionPrompt.instructions(
-                for: action, override: instructionOverride),
+                for: action, override: instructionOverride
+            ),
             messages: [
                 AIMessage(
                     role: .user,
-                    text: QuickActionPrompt.message(for: action, selection: selection))
+                    text: QuickActionPrompt.message(for: action, selection: selection)
+                ),
             ],
-            maxOutputTokens: maxOutputTokens(for: action, selection: selection, on: provider))
+            maxOutputTokens: maxOutputTokens(for: action, selection: selection, on: provider)
+        )
         var text = ""
         for try await event in provider.stream(request) {
-            guard case .text(let delta) = event else { continue }
+            guard case let .text(delta) = event else { continue }
             text += delta
             onDelta(delta)
         }
@@ -67,6 +72,7 @@ final class QuickActionRunner {
     private static func maxOutputTokens(
         for action: QuickAction, selection: String, on provider: any AIProvider
     ) -> Int {
+        guard #available(macOS 26.0, *) else { return AIRequest.defaultMaxOutputTokens }
         guard provider is AppleIntelligenceProvider else { return AIRequest.defaultMaxOutputTokens }
         let approximateTokens = max(selection.count / 3, 64)
         return action == .summarize ? min(approximateTokens, 512) : approximateTokens * 2
