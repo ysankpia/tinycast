@@ -25,6 +25,11 @@ struct HyperKeyEngine: Sendable {
     private var downAt: TimeInterval?
     private var used = false
 
+    init(route: HyperKeyRoute? = nil, includesShift: Bool = true) {
+        self.route = route
+        self.includesShift = includesShift
+    }
+
     private enum DeviceFlags {
         static let leftControlOptionCommand: UInt64 = 0x29
         static let leftShift: UInt64 = 0x2
@@ -33,8 +38,10 @@ struct HyperKeyEngine: Sendable {
     private var hyperFlags: UInt64 {
         var flags =
             CGEventFlags([.maskControl, .maskAlternate, .maskCommand]).rawValue
-            | DeviceFlags.leftControlOptionCommand
-        if includesShift { flags |= CGEventFlags.maskShift.rawValue | DeviceFlags.leftShift }
+                | DeviceFlags.leftControlOptionCommand
+        if includesShift {
+            flags |= CGEventFlags.maskShift.rawValue | DeviceFlags.leftShift
+        }
         return flags
     }
 
@@ -77,20 +84,24 @@ struct HyperKeyEngine: Sendable {
                 reset()
                 return Result(decision: .pass)
             }
-            if type == .keyDown || type == .flagsChanged { used = true }
+            if type == .keyDown || type == .flagsChanged {
+                used = true
+            }
             return Result(decision: .rewrite(flags: removingSourceFlags(from: flags) | hyperFlags))
         }
         if let modifier = route.modifier {
             guard type == .flagsChanged else { return Result(decision: .pass) }
             return transition(
                 isDown: modifier.isHeld(in: flags), flags: removingSourceFlags(from: flags), at: time,
-                insideSecureInput: insideSecureInput)
+                insideSecureInput: insideSecureInput
+            )
         }
         guard type == .keyDown || type == .keyUp else { return Result(decision: .pass) }
         guard !isAutorepeat else { return Result(decision: .suppress) }
         let flags = removingSourceFlags(from: flags) & ~CGEventFlags.maskSecondaryFn.rawValue
         return transition(
-            isDown: type == .keyDown, flags: flags, at: time, insideSecureInput: insideSecureInput)
+            isDown: type == .keyDown, flags: flags, at: time, insideSecureInput: insideSecureInput
+        )
     }
 
     private mutating func transition(
@@ -105,15 +116,17 @@ struct HyperKeyEngine: Sendable {
                 used = insideSecureInput
             }
             return Result(
-                decision: .rewrite(flags: flags | hyperFlags, keyCode: command, asFlagsChanged: true))
+                decision: .rewrite(flags: flags | hyperFlags, keyCode: command, asFlagsChanged: true)
+            )
         }
         // A stray F18 release ends nothing, but a modifier's release always clears the chord.
         guard isActive || route?.modifier != nil else { return Result(decision: .suppress) }
         let effect =
             !used && route?.key.hasOriginalFunction == true
-            ? downAt.map { Effect.unusedPress(heldFor: time - $0) } : nil
+                ? downAt.map { Effect.unusedPress(heldFor: time - $0) } : nil
         reset()
         return Result(
-            decision: .rewrite(flags: flags, keyCode: command, asFlagsChanged: true), effect: effect)
+            decision: .rewrite(flags: flags, keyCode: command, asFlagsChanged: true), effect: effect
+        )
     }
 }
