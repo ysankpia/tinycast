@@ -18,7 +18,8 @@ struct AISettingsView: View {
                 Toggle(isOn: $appSettings.aiEnabled) {
                     SettingsFeatureToggleLabel(
                         anchor: .aiAI, title: "Enable AI",
-                        subtitle: "Nothing is loaded or sent while it is off.")
+                        subtitle: "Nothing is loaded or sent while it is off."
+                    )
                 }
                 SettingsRow(
                     title: "Providers", subtitle: providerSummary, anchor: .aiProviders
@@ -107,13 +108,15 @@ struct AISettingsView: View {
         guard #available(macOS 26.0, *) else { return .requiresMacOS26 }
         return settings.isAppleIntelligenceAvailable() ? nil : AppleIntelligenceProvider.status()
     }
-    }
 
     private var providerSummary: String {
         var providers: [String] = []
-        if subscription.isConnected { providers.append("Codex") }
+        if subscription.isConnected {
+            providers.append("Codex")
+        }
         for kind in InstalledAIKind.managedCLIKinds
-        where installedAI.status(for: kind).isReady {
+            where installedAI.status(for: kind).isReady
+        {
             providers.append(kind.title)
         }
         if !settings.connections.isEmpty {
@@ -151,7 +154,8 @@ struct AISettingsView: View {
                     """
                     A reply stops after this many; Unlimited runs until Stop. API connections, Codex \
                     and Claude.
-                    """)
+                    """
+                )
             }
         } header: {
             SettingsSectionHeader(.aiChat)
