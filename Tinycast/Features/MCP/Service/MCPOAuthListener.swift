@@ -15,10 +15,12 @@ final class MCPOAuthListener {
     func start(
         state: String, issuer: String, requiresIssuer: Bool, timeout: Duration = .seconds(300)
     ) async throws {
+        guard #available(macOS 26.0, *) else { throw MCPOAuth.Failure.listenerUnavailable }
         guard result == nil else { throw CancellationError() }
         let listener = try NetworkListener(
             using: .parameters { TCP() }
-                .localEndpoint(.hostPort(host: .ipv4(.loopback), port: 4962)))
+                .localEndpoint(.hostPort(host: .ipv4(.loopback), port: 4962))
+        )
         listener.newConnectionLimit = 16
         try await withTaskCancellationHandler {
             try Task.checkCancellation()
@@ -29,7 +31,8 @@ final class MCPOAuthListener {
                         try await withThrowingTaskGroup(of: Void.self) { group in
                             group.addTask { [weak self] in
                                 try await self?.run(
-                                    listener, state: state, issuer: issuer, requiresIssuer: requiresIssuer)
+                                    listener, state: state, issuer: issuer, requiresIssuer: requiresIssuer
+                                )
                             }
                             group.addTask {
                                 try await Task.sleep(for: timeout)
@@ -51,14 +54,18 @@ final class MCPOAuthListener {
     func code() async throws -> String {
         try await withTaskCancellationHandler {
             try Task.checkCancellation()
-            if let result { return try result.get() }
+            if let result {
+                return try result.get()
+            }
             return try await withCheckedThrowingContinuation { reply = $0 }
         } onCancel: {
             Task { @MainActor [weak self] in self?.cancel() }
         }
     }
 
-    func cancel() { finish(.failure(CancellationError())) }
+    func cancel() {
+        finish(.failure(CancellationError()))
+    }
 
     private func finish(_ result: Result<String, Error>) {
         guard self.result == nil else { return }
@@ -71,6 +78,7 @@ final class MCPOAuthListener {
         task = nil
     }
 
+    @available(macOS 26.0, *)
     private func run(
         _ listener: NetworkListener<TCP>, state: String, issuer: String, requiresIssuer: Bool
     ) async throws {
@@ -88,6 +96,7 @@ final class MCPOAuthListener {
         }
     }
 
+    @available(macOS 26.0, *)
     private func read(
         _ connection: NetworkConnection<TCP>, state: String, issuer: String, requiresIssuer: Bool
     ) async throws {
@@ -95,8 +104,12 @@ final class MCPOAuthListener {
         while bytes.count < 8192 {
             let message = try await connection.receive(atLeast: 1, atMost: 8192 - bytes.count)
             bytes.append(message.content)
-            if bytes.range(of: Data("\r\n\r\n".utf8)) != nil { break }
-            if message.metadata.endOfStream { return }
+            if bytes.range(of: Data("\r\n\r\n".utf8)) != nil {
+                break
+            }
+            if message.metadata.endOfStream {
+                return
+            }
         }
         guard !accepted else { return }
         guard let request = String(bytes: bytes, encoding: .utf8), request.contains("\r\n\r\n") else {
@@ -109,7 +122,8 @@ final class MCPOAuthListener {
             do {
                 let code = try MCPOAuth.callback(
                     String(parts[1]), state: state, issuer: issuer,
-                    requiresIssuer: requiresIssuer)
+                    requiresIssuer: requiresIssuer
+                )
                 outcome = .success(code)
             } catch MCPOAuth.Failure.denied {
                 outcome = .failure(MCPOAuth.Failure.denied)
@@ -118,22 +132,29 @@ final class MCPOAuthListener {
         let status = outcome == nil ? "400 Bad Request" : "200 OK"
         let page =
             outcome == nil
-            ? String(localized: "Invalid sign-in response.")
-            : String(localized: "Return to Tinycast. You can close this tab.")
+                ? String(localized: "Invalid sign-in response.")
+                : String(localized: "Return to Tinycast. You can close this tab.")
         let response =
             "HTTP/1.1 \(status)\r\nContent-Type: text/html; charset=utf-8\r\n"
-            + "Cache-Control: no-store\r\nContent-Security-Policy: default-src 'none'\r\n"
-            + "Connection: close\r\nContent-Length: \(page.utf8.count)\r\n\r\n\(page)"
-        if outcome != nil { self.accepted = true }
+                + "Cache-Control: no-store\r\nContent-Security-Policy: default-src 'none'\r\n"
+                + "Connection: close\r\nContent-Length: \(page.utf8.count)\r\n\r\n\(page)"
+        if outcome != nil {
+            accepted = true
+        }
         do {
             try await connection.send(Data(response.utf8), endOfStream: true)
         } catch {
-            if let outcome { self.finish(outcome) }
+            if let outcome {
+                finish(outcome)
+            }
             throw error
         }
-        if let outcome { self.finish(outcome) }
+        if let outcome {
+            finish(outcome)
+        }
     }
 
+    @available(macOS 26.0, *)
     private func receive(
         _ connection: NetworkConnection<TCP>, state: String, issuer: String, requiresIssuer: Bool
     ) async {
@@ -141,7 +162,8 @@ final class MCPOAuthListener {
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask { [weak self] in
                     try await self?.read(
-                        connection, state: state, issuer: issuer, requiresIssuer: requiresIssuer)
+                        connection, state: state, issuer: issuer, requiresIssuer: requiresIssuer
+                    )
                 }
                 group.addTask { try await Task.sleep(for: .seconds(5)) }
                 defer { group.cancelAll() }
@@ -153,7 +175,9 @@ final class MCPOAuthListener {
 
 private extension Result where Success == String, Failure == Error {
     var failure: Error? {
-        if case .failure(let error) = self { return error }
+        if case let .failure(error) = self {
+            return error
+        }
         return nil
     }
 }
