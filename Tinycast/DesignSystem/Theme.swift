@@ -76,7 +76,8 @@ enum Theme {
         static let noteSwitcherDrop: CGFloat = 56
         /// Fixed like every menu's width; the height is exactly four heading rows.
         static let noteHeadingMenu = CGSize(
-            width: 220, height: menuRowHeight * 4 + menuRowSpacing * 3 + Spacing.sm * 2)
+            width: 220, height: menuRowHeight * 4 + menuRowSpacing * 3 + Spacing.sm * 2
+        )
         static let noteFooterHeight: CGFloat = 28
         /// Holds the launcher's 36-point action capsule with the same margin its own bar gives it.
         static let noteTitlebar: CGFloat = 52
@@ -125,7 +126,8 @@ enum Theme {
         static let shortcutPopover = CGSize(
             width: 176,
             height: Spacing.sm * 2 + heroKeyCap + Spacing.sm + shortcutPopoverLine * 2 + Spacing.sm
-                + compactKeyCap + calloutCaretHeight)
+                + compactKeyCap + calloutCaretHeight
+        )
         static let calloutCaretWidth: CGFloat = 15
         static let calloutCaretHeight: CGFloat = 7
         static let calloutCaretTip: CGFloat = 2.5
@@ -170,6 +172,7 @@ enum Theme {
         static var menuRowsMaxHeight: CGFloat {
             (menuVisibleRows * (menuRowHeight + menuRowSpacing)).rounded()
         }
+
         /// A menu row's glyph slot, sized so symbol and app-icon rows read the same.
         static let menuIcon: CGFloat = 20
         /// A brand mark inside the menu icon slot, sized to the optical weight of a symbol.
@@ -359,7 +362,8 @@ enum Theme {
     enum MenuMotion {
         /// Starts promptly and eases gently into the chevron's final direction.
         static let chevronAnimation = Animation.timingCurve(
-            0.16, 1, 0.3, 1, duration: Theme.Duration.menuChevron)
+            0.16, 1, 0.3, 1, duration: Theme.Duration.menuChevron
+        )
     }
 
     enum Typography {
@@ -368,7 +372,8 @@ enum Theme {
         static let searchField = Font.system(size: searchFieldSize, weight: .regular)
         /// `NSFont` is not `Sendable`, hence the isolation; every reader is a view anyway.
         @MainActor static let searchFieldNSFont = NSFont.systemFont(
-            ofSize: searchFieldSize, weight: .regular)
+            ofSize: searchFieldSize, weight: .regular
+        )
         static let headerIconSize: CGFloat = 18
         static let headerIcon = Font.system(size: headerIconSize, weight: .medium)
         static let rowTitle = Font.body
@@ -415,19 +420,24 @@ enum Theme {
         }
 
         static let dialogDimming = adaptive(
-            dark: .srgbInk(0, alpha: 0.34), light: .srgbInk(0, alpha: 0.34))
+            dark: .srgbInk(0, alpha: 0.34), light: .srgbInk(0, alpha: 0.34)
+        )
         /// Find's marks, the Mac's own yellow: every match faint, the current one solid.
         static let findMatch = adaptive(
             dark: NSColor.systemYellow.withAlphaComponent(0.32),
-            light: NSColor.systemYellow.withAlphaComponent(0.4))
+            light: NSColor.systemYellow.withAlphaComponent(0.4)
+        )
         static let findCurrent = adaptive(
             dark: NSColor.systemYellow.withAlphaComponent(0.9),
-            light: NSColor.systemYellow.withAlphaComponent(0.95))
+            light: NSColor.systemYellow.withAlphaComponent(0.95)
+        )
         /// Black on the solid mark in both appearances, as a highlighter's ink stays readable.
         static let findCurrentInk = adaptive(
-            dark: .srgbInk(0, alpha: 1), light: .srgbInk(0, alpha: 1))
+            dark: .srgbInk(0, alpha: 1), light: .srgbInk(0, alpha: 1)
+        )
         static let tooltipShadow = adaptive(
-            dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18))
+            dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18)
+        )
 
         /// Selection fill, shared by every list so they look identical.
         static let selection = ramp(dark: 0.10, light: 0.09)
@@ -436,7 +446,8 @@ enum Theme {
         static let emojiHoverBorder = ramp(dark: 0.42, light: 0.34)
         static let emojiSelectionBorder = ramp(dark: 0.92, light: 0.72)
         static let emojiInnerBorder = adaptive(
-            dark: .srgbInk(0, alpha: 0.72), light: .srgbInk(1, alpha: 0.72))
+            dark: .srgbInk(0, alpha: 0.72), light: .srgbInk(1, alpha: 0.72)
+        )
         static let menuHover = ramp(dark: 0.10, light: 0.09)
         static let separator = ramp(dark: 0.10, light: 0.12)
         /// Small control surfaces: kbd chips, glyph tiles.
@@ -445,9 +456,11 @@ enum Theme {
         /// A held control is stronger than hover, so mouse-down always reads.
         static let controlPressed = ramp(dark: 0.24, light: 0.20)
         static let compactShortcutSelectionTint = adaptive(
-            dark: .srgbInk(0.55, alpha: 1), light: .srgbInk(0, alpha: 0.40))
+            dark: .srgbInk(0.55, alpha: 1), light: .srgbInk(0, alpha: 0.40)
+        )
         static let compactShortcutSelectedInk = adaptive(
-            dark: .srgbInk(1, alpha: 1), light: .srgbInk(1, alpha: 1))
+            dark: .srgbInk(1, alpha: 1), light: .srgbInk(1, alpha: 1)
+        )
         /// Control borders: outlined kbd chips.
         static let border = ramp(dark: 0.20, light: 0.18)
         /// Alpha 1, so a call site can dim it with `.opacity` and land on the value it replaced.
@@ -463,22 +476,28 @@ enum Theme {
         static let cardStroke = ramp(dark: 0.10, light: 0.10)
         /// A window on the preview's plate. White in both, since the plate is always dark.
         static let layoutPreviewWindow = adaptive(
-            dark: .srgbInk(1, alpha: 0.22), light: .srgbInk(1, alpha: 0.28))
+            dark: .srgbInk(1, alpha: 0.22), light: .srgbInk(1, alpha: 0.28)
+        )
         /// The selected one, lifted enough to read as chosen before the accent stroke is seen.
         static let layoutPreviewWindowSelected = adaptive(
-            dark: .srgbInk(1, alpha: 0.38), light: .srgbInk(1, alpha: 0.44))
+            dark: .srgbInk(1, alpha: 0.38), light: .srgbInk(1, alpha: 0.44)
+        )
         /// The preview's plate: a display is dark in both appearances, so `adaptive`, not `ramp`.
         static let layoutPreviewGround = adaptive(
-            dark: .srgbInk(0, alpha: 0.55), light: .srgbInk(0, alpha: 0.50))
+            dark: .srgbInk(0, alpha: 0.55), light: .srgbInk(0, alpha: 0.50)
+        )
         /// The blurred desk behind a room preview, darkened so only the new layout reads.
         static let roomPreviewDim = adaptive(
-            dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18))
+            dark: .srgbInk(0, alpha: 0.18), light: .srgbInk(0, alpha: 0.18)
+        )
         /// A room card is a solid window in both appearances, so the desk never shows through.
         static let roomCardFill = adaptive(
-            dark: .srgbInk(0.16, alpha: 0.94), light: .srgbInk(0.98, alpha: 0.94))
+            dark: .srgbInk(0.16, alpha: 0.94), light: .srgbInk(0.98, alpha: 0.94)
+        )
         static let roomCardStroke = Color.accentColor
         static let roomCardShadow = adaptive(
-            dark: .srgbInk(0, alpha: 0.25), light: .srgbInk(0, alpha: 0.25))
+            dark: .srgbInk(0, alpha: 0.25), light: .srgbInk(0, alpha: 0.25)
+        )
         static let roomCardDot = ramp(dark: 0.25, light: 0.25)
         static let searchFlash = Color.accentColor.opacity(0.35)
         static let checkerLight = Color(nsColor: .srgbInk(1, alpha: 0.22))
@@ -502,7 +521,8 @@ enum Theme {
         static let progress = Color.blue
         /// The command output window's page: a flat surface the log sits directly on.
         static let terminalSurface = adaptive(
-            dark: .srgbInk(0.07, alpha: 1), light: .srgbInk(0.99, alpha: 1))
+            dark: .srgbInk(0.07, alpha: 1), light: .srgbInk(0.99, alpha: 1)
+        )
 
         enum Syntax {
             static let keyword = pair(dark: 0xFC5FA3, light: 0xAD3DA4)
@@ -524,7 +544,8 @@ enum Theme {
             private static func rgb(_ hex: UInt32) -> NSColor {
                 NSColor(
                     srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
-                    blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+                    blue: CGFloat(hex & 0xFF) / 255, alpha: 1
+                )
             }
         }
     }
@@ -534,7 +555,6 @@ private struct FrostedSurface<S: Shape>: ViewModifier {
     let shape: S
     let isInteractive: Bool
 
-    @ViewBuilder
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
             if isInteractive {
@@ -546,7 +566,7 @@ private struct FrostedSurface<S: Shape>: ViewModifier {
             content.background {
                 shape
                     .fill(.ultraThinMaterial)
-                    .overlay { shape.fill(Theme.Colors.glassFrost) }
+                    .overlay { shape.fill(Theme.Colors.controlSurface) }
                     .overlay {
                         shape.stroke(Theme.Colors.border.opacity(0.6), lineWidth: 0.5)
                     }
@@ -585,7 +605,11 @@ extension View {
             background {
                 shape
                     .fill(.ultraThinMaterial)
-                    .overlay { if let tint { shape.fill(tint) } }
+                    .overlay {
+                        if let tint {
+                            shape.fill(tint)
+                        }
+                    }
                     .overlay { shape.stroke(Theme.Colors.border.opacity(0.6), lineWidth: 0.5) }
                     .shadow(color: .black.opacity(0.22), radius: 6, y: 2)
             }
